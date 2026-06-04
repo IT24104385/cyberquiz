@@ -79,10 +79,16 @@ async function seedPrimaryAdmin() {
 async function start() {
   await init();
   await seedPrimaryAdmin();
-  if ((await quizzes.count()) === 0) {
-    for (const q of seedData) await quizzes.create({ ...q, creatorId: null });
-    console.log(`Auto-seeded ${seedData.length} built-in quizzes.`);
+  // Seed any built-in quiz that doesn't exist yet (by title).
+  const existing = new Set((await quizzes.all()).map((q) => q.title));
+  let seeded = 0;
+  for (const q of seedData) {
+    if (!existing.has(q.title)) {
+      await quizzes.create({ ...q, creatorId: null });
+      seeded++;
+    }
   }
+  if (seeded > 0) console.log(`Auto-seeded ${seeded} new built-in quiz(zes).`);
   app.listen(config.port, () => {
     console.log(`CyberQuiz API listening on ${config.backendUrl} (port ${config.port})`);
     console.log(
