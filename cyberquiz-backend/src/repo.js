@@ -81,6 +81,43 @@ const users = {
     );
     return normUser(rows[0]);
   },
+  async byEmail(email) {
+    const { rows } = await q(
+      "SELECT * FROM users WHERE email = $1 AND provider = 'local' LIMIT 1",
+      [email]
+    );
+    return normUser(rows[0]);
+  },
+  async setPasswordHash(id, hash) {
+    await q("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, id]);
+  },
+  async setRole(id, role) {
+    const { rows } = await q(
+      "UPDATE users SET role = $1 WHERE id = $2 RETURNING *",
+      [role, id]
+    );
+    return normUser(rows[0]);
+  },
+  async setDisabled(id, val) {
+    const { rows } = await q(
+      "UPDATE users SET is_disabled = $1 WHERE id = $2 RETURNING *",
+      [!!val, id]
+    );
+    return normUser(rows[0]);
+  },
+  async deleteById(id) {
+    await q("DELETE FROM users WHERE id = $1", [id]);
+  },
+  async all() {
+    const { rows } = await q(
+      "SELECT * FROM users ORDER BY created_at DESC"
+    );
+    return rows.map(normUser);
+  },
+  async count() {
+    const { rows } = await q("SELECT COUNT(*) AS n FROM users");
+    return Number(rows[0].n);
+  },
 };
 
 /* ──────────────────────────── quizzes ───────────────────────────── */
@@ -114,6 +151,9 @@ const quizzes = {
       ]
     );
     return normQuiz(rows[0]);
+  },
+  async deleteById(id) {
+    await q("DELETE FROM quizzes WHERE id = $1", [id]);
   },
 };
 

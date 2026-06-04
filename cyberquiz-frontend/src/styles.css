@@ -210,3 +210,8 @@ code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-rad
   .cq-dash-cols{grid-template-columns:1fr;}
   .cq-form-grid{grid-template-columns:1fr;}
 }
+
+/* ── Admin panel & role badges ── */
+.cq-admin-btn{color:#2ce6b0 !important;border-color:#2ce6b055 !important;}
+.cq-admin-btn.active{background:#2ce6b022 !important;color:#2ce6b0 !important;}
+.cq-role-badge{font-size:9px;font-weight:700;letter-spacing:1px;background:#2ce6b022;color:#2ce6b0;border:1px solid #2ce6b055;border-radius:4px;padding:2px 5px;margin-left:6px;line-height:1;}

@@ -15,6 +15,8 @@ async function requireAuth(req, res, next) {
     const user = await users.byId(payload.uid);
     if (!user || !user.username)
       return res.status(401).json({ error: "Account not found or incomplete." });
+    if (user.is_disabled)
+      return res.status(403).json({ error: "Account has been disabled." });
     req.user = user;
     next();
   } catch (e) {
@@ -39,4 +41,44 @@ async function requireOnboarding(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, requireOnboarding };
+// Requires admin or primary_admin role.
+async function requireAdmin(req, res, next) {
+  try {
+    const payload = verify(readToken(req));
+    if (!payload || payload.stage !== "active")
+      return res.status(401).json({ error: "Not authenticated." });
+    const user = await users.byId(payload.uid);
+    if (!user || !user.username)
+      return res.status(401).json({ error: "Account not found or incomplete." });
+    if (user.is_disabled)
+      return res.status(403).json({ error: "Account has been disabled." });
+    if (user.role !== "admin" && user.role !== "primary_admin")
+      return res.status(403).json({ error: "Admin access required." });
+    req.user = user;
+    next();
+  } catch (e) {
+    next(e);
+  }
+}
+
+// Requires primary_admin role only.
+async function requirePrimaryAdmin(req, res, next) {
+  try {
+    const payload = verify(readToken(req));
+    if (!payload || payload.stage !== "active")
+      return res.status(401).json({ error: "Not authenticated." });
+    const user = await users.byId(payload.uid);
+    if (!user || !user.username)
+      return res.status(401).json({ error: "Account not found or incomplete." });
+    if (user.is_disabled)
+      return res.status(403).json({ error: "Account has been disabled." });
+    if (user.role !== "primary_admin")
+      return res.status(403).json({ error: "Primary admin access required." });
+    req.user = user;
+    next();
+  } catch (e) {
+    next(e);
+  }
+}
+
+module.exports = { requireAuth, requireOnboarding, requireAdmin, requirePrimaryAdmin };
