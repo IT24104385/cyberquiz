@@ -137,8 +137,8 @@ export default function App() {
     await loadAll();
   }
 
-  async function devLogin(email, name) {
-    const r = await api.devLogin(email, name);
+  async function login(email, password, name) {
+    const r = await api.login(email, password, name);
     setToken(r.token);
     if (r.stage === "onboarding") {
       setOnboardName(r.user.displayName || name);
@@ -242,7 +242,7 @@ export default function App() {
       <BgFx />
       {user && <Header user={user} view={view} go={setView} logout={logout} />}
       <main className="cq-main">
-        {view === "login" && <Login onDevLogin={devLogin} notify={notify} />}
+        {view === "login" && <Login onLogin={login} notify={notify} />}
         {view === "onboarding" && <Onboarding name={onboardName} onSubmit={completeSignup} />}
         {view === "dashboard" && user && (
           <Dashboard user={user} quizzes={quizzes} board={board} activity={activity}
@@ -263,6 +263,11 @@ export default function App() {
         {view === "profile" && user && (
           <Profile user={user} activity={activity} onName={changeName}
             onColor={changeColor} onUpload={setAvatar} />
+        )}
+        {view === "admin" && user && (user.role === "admin" || user.role === "primary_admin") && (
+          <AdminPanel me={user} notify={notify} onUserChange={(updated) => {
+            if (updated && updated.id === user.id) setUser(updated);
+          }} />
         )}
       </main>
       {toast && <div className={"cq-toast cq-toast-" + toast.kind}>{toast.msg}</div>}
@@ -288,6 +293,7 @@ function Avatar({ name, color = 0, url, size = 40 }) {
 }
 
 function Header({ user, view, go, logout }) {
+  const isAdmin = user.role === "admin" || user.role === "primary_admin";
   const nav = [["dashboard", "Dashboard"], ["browse", "Quizzes"], ["leaderboard", "Leaderboard"], ["create", "Create"]];
   return (
     <header className="cq-header">
@@ -298,11 +304,17 @@ function Header({ user, view, go, logout }) {
         {nav.map(([k, l]) => (
           <button key={k} className={"cq-nav-btn" + (view === k ? " active" : "")} onClick={() => go(k)}>{l}</button>
         ))}
+        {isAdmin && (
+          <button className={"cq-nav-btn cq-admin-btn" + (view === "admin" ? " active" : "")} onClick={() => go("admin")}>
+            ⚙ Admin
+          </button>
+        )}
       </nav>
       <div className="cq-header-right">
         <button className="cq-userchip" onClick={() => go("profile")}>
           <Avatar name={user.displayName} color={user.avatarColor} url={user.avatarUrl} size={30} />
           <span className="cq-userchip-name">{user.displayName}</span>
+          {isAdmin && <span className="cq-role-badge">{user.role === "primary_admin" ? "OWNER" : "ADMIN"}</span>}
         </button>
         <button className="cq-icon-btn" title="Sign out" onClick={logout}>⏻</button>
       </div>
@@ -311,26 +323,28 @@ function Header({ user, view, go, logout }) {
 }
 
 /* ------------------------------- login -------------------------------- */
-function Login({ onDevLogin, notify }) {
+function Login({ onLogin, notify }) {
   const [health, setHealth] = useState(null);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => { api.health().then(setHealth).catch(() => setHealth({ ok: false })); }, []);
 
   const oauth = (p) => { window.location.href = api.oauthUrl(p); };
-  const dev = async () => {
+
+  const submit = async () => {
     if (!/^\S+@\S+\.\S+$/.test(email)) return notify("Enter a valid email.", "warn");
-    if (!name.trim()) return notify("Enter your name.", "warn");
+    if (password.length < 6) return notify("Password must be at least 6 characters.", "warn");
     setBusy(true);
-    try { await onDevLogin(email.toLowerCase(), name.trim()); }
+    try { await onLogin(email.toLowerCase().trim(), password, name.trim()); }
     catch (e) { notify(e.message, "warn"); } finally { setBusy(false); }
   };
 
   const googleOn = health?.googleEnabled;
   const fbOn = health?.facebookEnabled;
-  const devOn = health?.devLogin;
 
   return (
     <div className="cq-auth">
@@ -343,35 +357,49 @@ function Login({ onDevLogin, notify }) {
 
       <div className="cq-card cq-auth-card">
         <h2 className="cq-h2">Sign in to continue</h2>
-        <button className="cq-oauth cq-google" disabled={!googleOn} onClick={() => oauth("google")}>
-          <GoogleIcon /> Continue with Google
-        </button>
-        <button className="cq-oauth cq-fb" disabled={!fbOn} onClick={() => oauth("facebook")}>
-          <FbIcon /> Continue with Facebook
-        </button>
-        {(!googleOn || !fbOn) && (
-          <p className="cq-fineprint">OAuth buttons are disabled until you add provider keys to the
-            backend <code>.env</code> (<code>GOOGLE_CLIENT_ID</code> / <code>FACEBOOK_APP_ID</code>).</p>
-        )}
 
-        {devOn && (
+        {(googleOn || fbOn) && (
           <>
-            <div className="cq-divider"><span>or use dev login</span></div>
-            <label className="cq-label">Name</label>
-            <input className="cq-input" value={name} placeholder="Your name" onChange={(e) => setName(e.target.value)} />
-            <label className="cq-label">Email</label>
-            <input className="cq-input" value={email} placeholder="you@example.com"
-              onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && dev()} />
-            <button className="cq-btn accent" style={{ width: "100%", marginTop: 14 }} disabled={busy} onClick={dev}>
-              {busy ? "Signing in…" : "Continue"}
-            </button>
-            <p className="cq-fineprint">Dev login simulates an account so you can test without real OAuth.
-              Turn it off in production.</p>
+            {googleOn && (
+              <button className="cq-oauth cq-google" onClick={() => oauth("google")}>
+                <GoogleIcon /> Continue with Google
+              </button>
+            )}
+            {fbOn && (
+              <button className="cq-oauth cq-fb" onClick={() => oauth("facebook")}>
+                <FbIcon /> Continue with Facebook
+              </button>
+            )}
+            <div className="cq-divider"><span>or sign in with email</span></div>
           </>
         )}
+
+        <label className="cq-label">Name <span className="cq-muted" style={{fontSize:11}}>(new accounts only)</span></label>
+        <input className="cq-input" value={name} placeholder="Your name"
+          onChange={(e) => setName(e.target.value)} />
+        <label className="cq-label" style={{marginTop:10}}>Email</label>
+        <input className="cq-input" value={email} placeholder="you@example.com" type="email"
+          onChange={(e) => setEmail(e.target.value)} />
+        <label className="cq-label" style={{marginTop:10}}>Password</label>
+        <div style={{position:"relative"}}>
+          <input className="cq-input" value={password} placeholder="••••••••"
+            type={showPw ? "text" : "password"}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            style={{paddingRight:44}} />
+          <button type="button" onClick={() => setShowPw(!showPw)}
+            style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#888",fontSize:13}}>
+            {showPw ? "Hide" : "Show"}
+          </button>
+        </div>
+        <button className="cq-btn accent" style={{ width: "100%", marginTop: 16 }} disabled={busy} onClick={submit}>
+          {busy ? "Signing in…" : "Continue"}
+        </button>
+        <p className="cq-fineprint" style={{marginTop:10}}>
+          New here? Just enter your name, email & a password — your account is created automatically.
+        </p>
         {health && !health.ok && (
-          <p className="cq-err" style={{ marginTop: 14 }}>Can’t reach the backend. Start it with
-            <code> npm run dev</code> and check VITE_API_URL.</p>
+          <p className="cq-err" style={{ marginTop: 14 }}>Can’t reach the backend. Check VITE_API_URL.</p>
         )}
       </div>
       <div className="cq-secline">🔒 reserved names blocked · unique handles · 3-week name lock · server-side scoring</div>
@@ -776,6 +804,248 @@ function downscale(file, size = 256) {
     };
     reader.onerror = reject; reader.readAsDataURL(file);
   });
+}
+
+/* ─────────────────────────── admin panel ─────────────────────────── */
+function AdminPanel({ me, notify, onUserChange }) {
+  const [tab, setTab] = useState("overview");
+  const [stats, setStats] = useState(null);
+  const [userList, setUserList] = useState([]);
+  const [quizList, setQuizList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const isPrimary = me.role === "primary_admin";
+
+  const loadStats = async () => {
+    try { const d = await api.adminStats(); setStats(d); } catch (e) { notify(e.message, "warn"); }
+  };
+  const loadUsers = async () => {
+    try { const d = await api.adminUsers(); setUserList(d.users); } catch (e) { notify(e.message, "warn"); }
+  };
+  const loadQuizzes = async () => {
+    try { const d = await api.adminQuizzes(); setQuizList(d.quizzes); } catch (e) { notify(e.message, "warn"); }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([loadStats(), loadUsers(), loadQuizzes()]).finally(() => setLoading(false));
+  }, []);
+
+  const disableUser = async (u) => {
+    try {
+      const r = await api.adminDisableUser(u.id);
+      setUserList((l) => l.map((x) => x.id === u.id ? r.user : x));
+      if (r.user.id === me.id) onUserChange(r.user);
+      notify(`@${u.username} disabled.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const enableUser = async (u) => {
+    try {
+      const r = await api.adminEnableUser(u.id);
+      setUserList((l) => l.map((x) => x.id === u.id ? r.user : x));
+      notify(`@${u.username} enabled.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const deleteUser = async (u) => {
+    if (!confirm(`Delete user @${u.username}? This cannot be undone.`)) return;
+    try {
+      await api.adminDeleteUser(u.id);
+      setUserList((l) => l.filter((x) => x.id !== u.id));
+      loadStats();
+      notify(`@${u.username} deleted.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const makeAdmin = async (u) => {
+    try {
+      const r = await api.adminAddAdmin(u.id);
+      setUserList((l) => l.map((x) => x.id === u.id ? r.user : x));
+      loadStats();
+      notify(`@${u.username} is now an admin.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const removeAdmin = async (u) => {
+    if (!confirm(`Remove admin role from @${u.username}?`)) return;
+    try {
+      const r = await api.adminRemoveAdmin(u.id);
+      setUserList((l) => l.map((x) => x.id === u.id ? r.user : x));
+      loadStats();
+      notify(`@${u.username} demoted to user.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const deleteQuiz = async (q) => {
+    if (!confirm(`Delete quiz "${q.title}"? This cannot be undone.`)) return;
+    try {
+      await api.adminDeleteQuiz(q.id);
+      setQuizList((l) => l.filter((x) => x.id !== q.id));
+      loadStats();
+      notify(`"${q.title}" deleted.`, "ok");
+    } catch (e) { notify(e.message, "warn"); }
+  };
+
+  const roleBadge = (role) => {
+    if (role === "primary_admin") return <span style={badgeStyle("#e04040")}>OWNER</span>;
+    if (role === "admin") return <span style={badgeStyle("#2ce6b0")}>ADMIN</span>;
+    return null;
+  };
+  const badgeStyle = (color) => ({
+    fontSize: 10, fontWeight: 700, letterSpacing: 1,
+    background: color + "22", color, border: `1px solid ${color}55`,
+    borderRadius: 4, padding: "2px 6px", marginLeft: 6,
+  });
+
+  const tabs = [["overview", "Overview"], ["users", "Users"], ["quizzes", "Quizzes"]];
+
+  return (
+    <div className="cq-page">
+      <div className="cq-page-head">
+        <h1 className="cq-h1">⚙ Admin Panel</h1>
+        <span style={{ fontSize: 13, color: "#888" }}>
+          Logged in as {isPrimary ? "Primary Admin (Owner)" : "Admin"}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {tabs.map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)}
+            style={{
+              padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600,
+              background: tab === k ? "#2ce6b0" : "#1a2235", color: tab === k ? "#0a0f1a" : "#a0b0c8",
+              fontSize: 14, transition: "all .15s",
+            }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p className="cq-muted">Loading…</p>}
+
+      {/* ── Overview ── */}
+      {tab === "overview" && stats && (
+        <div className="cq-stat-grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))" }}>
+          <div className="cq-card cq-stat"><div className="cq-stat-value">{stats.totalUsers}</div><div className="cq-stat-label">Total users</div></div>
+          <div className="cq-card cq-stat"><div className="cq-stat-value">{stats.disabledUsers}</div><div className="cq-stat-label">Disabled users</div></div>
+          <div className="cq-card cq-stat"><div className="cq-stat-value">{stats.adminCount}</div><div className="cq-stat-label">Admins</div></div>
+          <div className="cq-card cq-stat"><div className="cq-stat-value">{stats.totalQuizzes}</div><div className="cq-stat-label">Total quizzes</div></div>
+          <div className="cq-card cq-stat"><div className="cq-stat-value">{stats.totalScores}</div><div className="cq-stat-label">Total attempts</div></div>
+        </div>
+      )}
+
+      {/* ── Users ── */}
+      {tab === "users" && (
+        <div className="cq-card cq-section" style={{ overflowX: "auto" }}>
+          <h2 className="cq-h2" style={{ marginBottom: 16 }}>All Users ({userList.length})</h2>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #1e2d47", color: "#667" }}>
+                <th style={th}>User</th>
+                <th style={th}>Email</th>
+                <th style={th}>Provider</th>
+                <th style={th}>Role</th>
+                <th style={th}>Status</th>
+                <th style={th}>Joined</th>
+                <th style={th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userList.map((u) => (
+                <tr key={u.id} style={{ borderBottom: "1px solid #111a2b" }}>
+                  <td style={td}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Avatar name={u.displayName} color={u.avatarColor} url={u.avatarUrl} size={28} />
+                      <div>
+                        <div style={{ fontWeight: 600, color: "#e0eaf8" }}>{u.displayName}</div>
+                        <div style={{ color: "#667", fontSize: 11 }}>@{u.username || "—"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={td}>{u.email || "—"}</td>
+                  <td style={td}>{u.provider}</td>
+                  <td style={td}>
+                    {roleBadge(u.role)}
+                    {!roleBadge(u.role) && <span style={{ color: "#667" }}>user</span>}
+                  </td>
+                  <td style={td}>
+                    <span style={{ color: u.isDisabled ? "#e04040" : "#2ce6b0", fontWeight: 600, fontSize: 11 }}>
+                      {u.isDisabled ? "DISABLED" : "ACTIVE"}
+                    </span>
+                  </td>
+                  <td style={td}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
+                  <td style={td}>
+                    {u.id !== me.id && u.role !== "primary_admin" && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {u.isDisabled
+                          ? <ABtn color="#2ce6b0" onClick={() => enableUser(u)}>Enable</ABtn>
+                          : <ABtn color="#e08020" onClick={() => disableUser(u)}>Disable</ABtn>}
+                        <ABtn color="#e04040" onClick={() => deleteUser(u)}>Delete</ABtn>
+                        {isPrimary && u.role !== "admin" && (
+                          <ABtn color="#5b8cff" onClick={() => makeAdmin(u)}>Make Admin</ABtn>
+                        )}
+                        {isPrimary && u.role === "admin" && (
+                          <ABtn color="#a78bfa" onClick={() => removeAdmin(u)}>Remove Admin</ABtn>
+                        )}
+                      </div>
+                    )}
+                    {u.id === me.id && <span style={{ color: "#667", fontSize: 11 }}>You</span>}
+                    {u.role === "primary_admin" && u.id !== me.id && <span style={{ color: "#667", fontSize: 11 }}>—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Quizzes ── */}
+      {tab === "quizzes" && (
+        <div className="cq-card cq-section" style={{ overflowX: "auto" }}>
+          <h2 className="cq-h2" style={{ marginBottom: 16 }}>All Quizzes ({quizList.length})</h2>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #1e2d47", color: "#667" }}>
+                <th style={th}>Title</th>
+                <th style={th}>Category</th>
+                <th style={th}>Creator</th>
+                <th style={th}>Questions</th>
+                <th style={th}>Created</th>
+                <th style={th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quizList.map((q) => (
+                <tr key={q.id} style={{ borderBottom: "1px solid #111a2b" }}>
+                  <td style={td}><span style={{ color: "#e0eaf8", fontWeight: 600 }}>{q.title}</span></td>
+                  <td style={td}>{q.category}</td>
+                  <td style={td}>{q.creator || "—"}</td>
+                  <td style={td}>{q.questionCount}</td>
+                  <td style={td}>{q.createdAt ? new Date(q.createdAt).toLocaleDateString() : "—"}</td>
+                  <td style={td}>
+                    <ABtn color="#e04040" onClick={() => deleteQuiz(q)}>Delete</ABtn>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const th = { textAlign: "left", padding: "8px 12px", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 };
+const td = { padding: "10px 12px", verticalAlign: "middle" };
+
+function ABtn({ color, onClick, children }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: "3px 10px", borderRadius: 5, border: `1px solid ${color}55`,
+      background: color + "15", color, fontSize: 11, fontWeight: 700,
+      cursor: "pointer", letterSpacing: 0.5,
+    }}>{children}</button>
+  );
 }
 
 /* -------------------------------- icons ------------------------------- */

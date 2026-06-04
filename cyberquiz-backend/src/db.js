@@ -18,6 +18,11 @@ async function init() {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const stmt of statements) await pool.query(stmt);
+
+  // Migrations for new columns added after initial schema.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_disabled BOOLEAN NOT NULL DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT`);
 }
 
 module.exports = { pool, init };

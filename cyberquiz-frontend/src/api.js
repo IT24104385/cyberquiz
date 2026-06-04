@@ -52,6 +52,7 @@ export const api = {
   health: () => req("/health"),
 
   // auth
+  login: (email, password, name) => req("/auth/login", { method: "POST", body: { email, password, name } }),
   devLogin: (email, name) => req("/auth/dev-login", { method: "POST", body: { email, name } }),
   completeSignup: (username, avatarColor) =>
     req("/auth/complete-signup", { method: "POST", body: { username, avatarColor } }),
@@ -73,4 +74,15 @@ export const api = {
 
   // leaderboard
   leaderboard: () => req("/api/leaderboard"),
+
+  // admin
+  adminStats: () => req("/api/admin/stats"),
+  adminUsers: () => req("/api/admin/users"),
+  adminDisableUser: (id) => req(`/api/admin/users/${id}/disable`, { method: "PATCH" }),
+  adminEnableUser: (id) => req(`/api/admin/users/${id}/enable`, { method: "PATCH" }),
+  adminDeleteUser: (id) => req(`/api/admin/users/${id}`, { method: "DELETE" }),
+  adminAddAdmin: (userId) => req("/api/admin/admins", { method: "POST", body: { userId } }),
+  adminRemoveAdmin: (id) => req(`/api/admin/admins/${id}`, { method: "DELETE" }),
+  adminQuizzes: () => req("/api/admin/quizzes"),
+  adminDeleteQuiz: (id) => req(`/api/admin/quizzes/${id}`, { method: "DELETE" }),
 };

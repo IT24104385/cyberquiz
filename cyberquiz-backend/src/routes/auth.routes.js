@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 const { passport, publicUser, findOrCreate } = require("../passport");
 const { sign } = require("../jwt");
 const { users } = require("../repo");
@@ -68,6 +69,47 @@ router.post("/complete-signup", authLimiter, requireOnboarding, async (req, res,
       return res.status(409).json({ error: "That username was just taken. Try another." });
     next(e);
   }
+});
+
+/* ─── Email / password login (always on) ─── */
+router.post("/login", authLimiter, async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body || {};
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password are required." });
+    if (!/^\S+@\S+\.\S+$/.test(email))
+      return res.status(400).json({ error: "Invalid email address." });
+    if (password.length < 6)
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+
+    let user = await users.byEmail(email.toLowerCase());
+
+    if (user) {
+      if (!user.password_hash)
+        return res.status(401).json({ error: "Account uses a different login method." });
+      const match = await bcrypt.compare(password, user.password_hash);
+      if (!match)
+        return res.status(401).json({ error: "Incorrect password." });
+      if (user.is_disabled)
+        return res.status(403).json({ error: "Account has been disabled." });
+    } else {
+      // New account — create with password hash.
+      const displayName = (name || "").trim() || email.split("@")[0];
+      const hash = await bcrypt.hash(password, 10);
+      const profile = {
+        id: "local_" + email.toLowerCase(),
+        displayName,
+        emails: [{ value: email.toLowerCase() }],
+      };
+      user = await findOrCreate("local", profile);
+      await users.setPasswordHash(user.id, hash);
+      // Re-fetch so password_hash is present for the newly created user.
+      user = await users.byId(user.id);
+    }
+
+    const stage = user.username ? "active" : "onboarding";
+    res.json({ token: sign(user, stage), stage, user: publicUser(user) });
+  } catch (e) { next(e); }
 });
 
 /* ─── Dev login (no real OAuth needed) ─── */

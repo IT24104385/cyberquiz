@@ -59,6 +59,8 @@ function publicUser(u) {
     avatarUrl: u.avatar_url,
     createdAt: u.created_at,
     lastNameChange: u.last_name_change,
+    role: u.role || "user",
+    isDisabled: u.is_disabled || false,
   };
 }
 
