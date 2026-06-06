@@ -591,7 +591,7 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
 /* ------------------------------- result ------------------------------- */
 function Result({ result, go, retake }) {
   const ring = result.percentage;
-  const grade = ring >= 80 ? "Excellent" : ring >= 50 ? "Good effort" : "Keep practising";
+  const grade = ring === 100 ? "Perfect!" : ring >= 80 ? "Excellent" : ring >= 50 ? "Good effort" : "Keep practising";
   return (
     <div className="cq-page cq-result">
       <div className="cq-card cq-result-card">
