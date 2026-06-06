@@ -591,7 +591,11 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
       <div className="cq-take-foot">
         <button className="cq-btn ghost" disabled={qIndex === 0} onClick={() => setQIndex(qIndex - 1)}>Previous</button>
         <span className="cq-muted sm">{answered}/{quiz.questions.length} answered</span>
-        {last ? <button className="cq-btn accent" onClick={onFinish}>Submit quiz</button>
+        {last ? <button className="cq-btn accent" onClick={onFinish}>
+          {quiz.questions.length - answered > 0
+            ? `Submit (${quiz.questions.length - answered} unanswered)`
+            : "Submit quiz"}
+        </button>
           : <button className="cq-btn accent" onClick={() => setQIndex(qIndex + 1)}>Next</button>}
       </div>
     </div>
