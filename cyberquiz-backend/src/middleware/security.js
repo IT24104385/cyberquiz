@@ -4,7 +4,12 @@ const rateLimit = require("express-rate-limit");
 const config = require("../config");
 
 const corsMw = cors({
-  origin: config.frontendUrl,
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);                 // health checks / curl
+    const clean = origin.replace(/\/+$/, "");
+    if (config.frontendOrigins.includes(clean)) return cb(null, true);
+    return cb(new Error("Origin not allowed by CORS: " + origin));
+  },
   credentials: true,
 });
 

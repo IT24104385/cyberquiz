@@ -522,7 +522,9 @@ function Browse({ quizzes, startQuiz, go }) {
   const cats = ["All", ...Array.from(new Set(quizzes.map((x) => x.category)))];
   const filtered = quizzes.filter((x) =>
     (cat === "All" || x.category === cat) &&
-    (x.title.toLowerCase().includes(q.toLowerCase()) || x.creator.toLowerCase().includes(q.toLowerCase())));
+    (x.title.toLowerCase().includes(q.toLowerCase()) ||
+     x.creator.toLowerCase().includes(q.toLowerCase()) ||
+     (x.description || "").toLowerCase().includes(q.toLowerCase())));
   return (
     <div className="cq-page">
       <div className="cq-page-head"><h1 className="cq-h1">Quiz library</h1>
