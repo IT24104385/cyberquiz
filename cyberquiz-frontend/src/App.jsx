@@ -606,11 +606,12 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
 function Result({ result, go, retake }) {
   const ring = result.percentage;
   const grade = ring === 100 ? "Perfect!" : ring >= 80 ? "Excellent" : ring >= 50 ? "Good effort" : "Keep practising";
+  const ringColor = ring >= 80 ? "var(--accent)" : ring >= 50 ? "var(--warn)" : "var(--danger)";
   return (
     <div className="cq-page cq-result">
       <div className="cq-card cq-result-card">
         {result.timedOut && <div className="cq-timedout">⏱ Time ran out — auto-submitted</div>}
-        <div className="cq-score-ring" style={{ "--pct": ring }}>
+        <div className="cq-score-ring" style={{ "--pct": ring, "--ring-color": ringColor }}>
           <div className="cq-score-inner"><span className="cq-score-num">{ring}%</span>
             <span className="cq-score-sub">{result.correct}/{result.total}</span></div>
         </div>
