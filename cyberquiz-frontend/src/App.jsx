@@ -669,13 +669,13 @@ function Create({ onPublish, go }) {
         <button className="cq-link" onClick={() => go("browse")}>Cancel</button></div>
       <div className="cq-card cq-section">
         <div className="cq-form-grid">
-          <div className="cq-field"><label className="cq-label">Title</label>
+          <div className="cq-field"><label className="cq-label">Title <span className="cq-muted" style={{float:"right",fontWeight:400}}>{title.length}/80</span></label>
             <input className="cq-input" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Network Security Basics" /></div>
           <div className="cq-field"><label className="cq-label">Category</label>
             <input className="cq-input" value={category} maxLength={30} onChange={(e) => setCategory(e.target.value)} /></div>
           <div className="cq-field"><label className="cq-label">Time limit (minutes)</label>
             <input className="cq-input" type="number" min={1} max={60} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} /></div>
-          <div className="cq-field full"><label className="cq-label">Description</label>
+          <div className="cq-field full"><label className="cq-label">Description <span className="cq-muted" style={{float:"right",fontWeight:400}}>{desc.length}/160</span></label>
             <input className="cq-input" value={desc} maxLength={160} onChange={(e) => setDesc(e.target.value)} placeholder="One line about the quiz" /></div>
         </div>
       </div>
