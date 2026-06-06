@@ -559,6 +559,16 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
   const low = timeLeft <= 15;
   const pct = ((qIndex + 1) / quiz.questions.length) * 100;
   const pick = (i) => setAnswers({ ...answers, [qIndex]: i });
+
+  useEffect(() => {
+    const handler = (e) => {
+      const idx = ["a", "b", "c", "d"].indexOf(e.key.toLowerCase());
+      if (idx >= 0 && idx < quiz.questions[qIndex].options.length)
+        setAnswers((prev) => ({ ...prev, [qIndex]: idx }));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [qIndex, quiz, setAnswers]);
   return (
     <div className="cq-page cq-take">
       <div className="cq-take-bar">
