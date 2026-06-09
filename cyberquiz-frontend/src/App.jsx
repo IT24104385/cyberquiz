@@ -522,7 +522,9 @@ function Browse({ quizzes, startQuiz, go }) {
   const cats = ["All", ...Array.from(new Set(quizzes.map((x) => x.category)))];
   const filtered = quizzes.filter((x) =>
     (cat === "All" || x.category === cat) &&
-    (x.title.toLowerCase().includes(q.toLowerCase()) || x.creator.toLowerCase().includes(q.toLowerCase())));
+    (x.title.toLowerCase().includes(q.toLowerCase()) ||
+     x.creator.toLowerCase().includes(q.toLowerCase()) ||
+     (x.description || "").toLowerCase().includes(q.toLowerCase())));
   return (
     <div className="cq-page">
       <div className="cq-page-head"><h1 className="cq-h1">Quiz library</h1>
@@ -557,6 +559,16 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
   const low = timeLeft <= 15;
   const pct = ((qIndex + 1) / quiz.questions.length) * 100;
   const pick = (i) => setAnswers({ ...answers, [qIndex]: i });
+
+  useEffect(() => {
+    const handler = (e) => {
+      const idx = ["a", "b", "c", "d"].indexOf(e.key.toLowerCase());
+      if (idx >= 0 && idx < quiz.questions[qIndex].options.length)
+        setAnswers((prev) => ({ ...prev, [qIndex]: idx }));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [qIndex, quiz, setAnswers]);
   return (
     <div className="cq-page cq-take">
       <div className="cq-take-bar">
@@ -579,7 +591,11 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
       <div className="cq-take-foot">
         <button className="cq-btn ghost" disabled={qIndex === 0} onClick={() => setQIndex(qIndex - 1)}>Previous</button>
         <span className="cq-muted sm">{answered}/{quiz.questions.length} answered</span>
-        {last ? <button className="cq-btn accent" onClick={onFinish}>Submit quiz</button>
+        {last ? <button className="cq-btn accent" onClick={onFinish}>
+          {quiz.questions.length - answered > 0
+            ? `Submit (${quiz.questions.length - answered} unanswered)`
+            : "Submit quiz"}
+        </button>
           : <button className="cq-btn accent" onClick={() => setQIndex(qIndex + 1)}>Next</button>}
       </div>
     </div>
@@ -589,12 +605,13 @@ function Take({ quiz, qIndex, setQIndex, answers, setAnswers, timeLeft, onFinish
 /* ------------------------------- result ------------------------------- */
 function Result({ result, go, retake }) {
   const ring = result.percentage;
-  const grade = ring >= 80 ? "Excellent" : ring >= 50 ? "Good effort" : "Keep practising";
+  const grade = ring === 100 ? "Perfect!" : ring >= 80 ? "Excellent" : ring >= 50 ? "Good effort" : "Keep practising";
+  const ringColor = ring >= 80 ? "var(--accent)" : ring >= 50 ? "var(--warn)" : "var(--danger)";
   return (
     <div className="cq-page cq-result">
       <div className="cq-card cq-result-card">
         {result.timedOut && <div className="cq-timedout">⏱ Time ran out — auto-submitted</div>}
-        <div className="cq-score-ring" style={{ "--pct": ring }}>
+        <div className="cq-score-ring" style={{ "--pct": ring, "--ring-color": ringColor }}>
           <div className="cq-score-inner"><span className="cq-score-num">{ring}%</span>
             <span className="cq-score-sub">{result.correct}/{result.total}</span></div>
         </div>
@@ -653,13 +670,13 @@ function Create({ onPublish, go }) {
         <button className="cq-link" onClick={() => go("browse")}>Cancel</button></div>
       <div className="cq-card cq-section">
         <div className="cq-form-grid">
-          <div className="cq-field"><label className="cq-label">Title</label>
+          <div className="cq-field"><label className="cq-label">Title <span className="cq-muted" style={{float:"right",fontWeight:400}}>{title.length}/80</span></label>
             <input className="cq-input" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Network Security Basics" /></div>
           <div className="cq-field"><label className="cq-label">Category</label>
             <input className="cq-input" value={category} maxLength={30} onChange={(e) => setCategory(e.target.value)} /></div>
           <div className="cq-field"><label className="cq-label">Time limit (minutes)</label>
             <input className="cq-input" type="number" min={1} max={60} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} /></div>
-          <div className="cq-field full"><label className="cq-label">Description</label>
+          <div className="cq-field full"><label className="cq-label">Description <span className="cq-muted" style={{float:"right",fontWeight:400}}>{desc.length}/160</span></label>
             <input className="cq-input" value={desc} maxLength={160} onChange={(e) => setDesc(e.target.value)} placeholder="One line about the quiz" /></div>
         </div>
       </div>

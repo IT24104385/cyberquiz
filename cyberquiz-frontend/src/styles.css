@@ -165,7 +165,7 @@ code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-rad
 .cq-result{max-width:560px;}
 .cq-result-card{padding:40px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .cq-timedout{color:var(--warn);font-family:var(--mono);font-size:12.5px;margin-bottom:6px;}
-.cq-score-ring{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px;background:conic-gradient(var(--accent) calc(var(--pct)*1%),var(--panel2) 0);}
+.cq-score-ring{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px;background:conic-gradient(var(--ring-color,var(--accent)) calc(var(--pct)*1%),var(--panel2) 0);}
 .cq-score-inner{width:120px;height:120px;border-radius:50%;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
 .cq-score-num{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--accent);}
 .cq-score-sub{font-family:var(--mono);font-size:13px;color:var(--muted);}

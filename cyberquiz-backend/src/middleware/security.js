@@ -4,7 +4,12 @@ const rateLimit = require("express-rate-limit");
 const config = require("../config");
 
 const corsMw = cors({
-  origin: config.frontendUrl,
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);                 // health checks / curl
+    const clean = origin.replace(/\/+$/, "");
+    if (config.frontendOrigins.includes(clean)) return cb(null, true);
+    return cb(new Error("Origin not allowed by CORS: " + origin));
+  },
   credentials: true,
 });
 
@@ -19,7 +24,7 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  message: { error: "Too many auth attempts, please try again later." },
+  message: { error: "Too many auth attempts, Please try again later." },
 });
 
 const writeLimiter = rateLimit({
