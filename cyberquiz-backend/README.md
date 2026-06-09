@@ -2,7 +2,7 @@
 
 Node.js + Express + **PostgreSQL** backend for CyberQuiz: timed MCQ quizzes,
 Google/Facebook OAuth, user-submitted quizzes, creator attribution, profiles
-and a global leaderboard.
+and also a global leaderboard.
 
 This edition is **stateless** — all data (including profile pictures, stored as
 small base64 strings) lives in Postgres, so the server keeps no local files and
